@@ -1,0 +1,72 @@
+{{ define "PlayerPage" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player</title>
+    {{ template "Head" }}
+</head>
+<body>
+    <input type="hidden" id="sec" name="sec" value="{{ .Sec }}">
+
+    <video class="w-full h-full">
+        <source src="{{ .Src }}"/>
+    </video>
+
+    <script>
+        // Get video and source node
+        let video = document.querySelector('video')
+        let source = document.querySelector('source')
+        // Set initial parameters
+        video.fastSeek(document.querySelector('#sec').getAttribute('value'))
+        // Pull updates from server
+        setInterval(async () => {
+            let resp = await fetch('/sync')
+            let data = await res.json()
+            // Process commands
+            if (data.cmd != '') {
+                // Process
+                switch (data.cmd) {
+                    case 'play':
+                        video.play()
+                        break
+                    case 'pause':
+                        video.pause()
+                        break
+                    case 'seek':
+                        video.fastSeek(data.sec)
+                        break
+                    case 'load':
+                        source.setAttribute('src', data.src)
+                        video.load()
+                        break
+                }
+                // Reset command
+                await fetch('/sync', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        cmd: ''
+                    })
+                })
+            }
+        }, 1000)
+        // Update seek time
+        setInterval(async () => {
+            await fetch('/sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sec: video.currentTime
+                })
+            })
+        }, 10000)
+    </script>
+</body>
+</html>
+{{ end }}
